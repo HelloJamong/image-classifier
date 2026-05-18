@@ -102,6 +102,45 @@ def cluster(
     return groups, ungrouped
 
 
+def move_files(
+    groups: dict[int, list[Path]],
+    ungrouped: list[Path],
+    target_dir: Path,
+) -> list[tuple[Path, Path]]:
+    """이미지를 그룹 폴더로 이동한다.
+
+    Returns:
+        [(원본경로, 이동후경로), ...]
+    """
+    import shutil
+
+    moved: list[tuple[Path, Path]] = []
+
+    for idx, (_, paths) in enumerate(sorted(groups.items()), 1):
+        dest_dir = target_dir / f"group_{idx:03d}"
+        dest_dir.mkdir(exist_ok=True)
+        for src in paths:
+            dst = dest_dir / src.name
+            try:
+                shutil.move(str(src), str(dst))
+                moved.append((src, dst))
+            except Exception as e:
+                print(f"[경고] 이동 실패 ({src.name}): {e}")
+
+    if ungrouped:
+        ung_dir = target_dir / "_ungrouped"
+        ung_dir.mkdir(exist_ok=True)
+        for src in ungrouped:
+            dst = ung_dir / src.name
+            try:
+                shutil.move(str(src), str(dst))
+                moved.append((src, dst))
+            except Exception as e:
+                print(f"[경고] 이동 실패 ({src.name}): {e}")
+
+    return moved
+
+
 def print_preview(groups: dict[int, list[Path]], ungrouped: list[Path]) -> None:
     """클러스터링 결과 미리보기를 콘솔에 출력한다."""
     print("분류 결과 미리보기")

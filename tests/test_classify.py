@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images, compute_hashes, cluster, print_preview
+from classify import scan_images, compute_hashes, cluster, print_preview, move_files
 
 
 class TestScanImages:
@@ -162,3 +162,45 @@ class TestPrintPreview:
         print_preview({}, [tmp_path / "a.png"])
         out = capsys.readouterr().out
         assert "0" in out or "그룹" in out
+
+
+class TestMoveFiles:
+    def _make_img(self, path):
+        from PIL import Image
+        Image.new("RGB", (8, 8), (128, 64, 32)).save(path)
+        return path
+
+    def _setup(self, tmp_path):
+        a = self._make_img(tmp_path / "a.png")
+        b = self._make_img(tmp_path / "b.png")
+        c = self._make_img(tmp_path / "c.png")
+        groups = {0: [a, b]}
+        ungrouped = [c]
+        return groups, ungrouped
+
+    def test_files_moved_to_group_dirs(self, tmp_path):
+        groups, ungrouped = self._setup(tmp_path)
+        move_files(groups, ungrouped, tmp_path)
+        assert (tmp_path / "group_001" / "a.png").exists()
+        assert (tmp_path / "group_001" / "b.png").exists()
+        assert not (tmp_path / "a.png").exists()
+
+    def test_ungrouped_moved_to_ungrouped_dir(self, tmp_path):
+        groups, ungrouped = self._setup(tmp_path)
+        move_files(groups, ungrouped, tmp_path)
+        assert (tmp_path / "_ungrouped" / "c.png").exists()
+        assert not (tmp_path / "c.png").exists()
+
+    def test_returns_moved_list(self, tmp_path):
+        groups, ungrouped = self._setup(tmp_path)
+        moved = move_files(groups, ungrouped, tmp_path)
+        assert len(moved) == 3
+        for src, dst in moved:
+            assert isinstance(src, Path)
+            assert isinstance(dst, Path)
+            assert dst.exists()
+
+    def test_group_folder_zero_padded(self, tmp_path):
+        groups, ungrouped = self._setup(tmp_path)
+        move_files(groups, ungrouped, tmp_path)
+        assert (tmp_path / "group_001").is_dir()
