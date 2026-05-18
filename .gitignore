@@ -11,6 +11,10 @@ build/
 dist/
 *.spec
 
+# OMC
+.omc/
+.omx/
+
 # IDE
 .idea/
 .vscode/
