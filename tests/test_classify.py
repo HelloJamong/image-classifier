@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images, compute_hashes, cluster, print_preview, move_files
+from classify import scan_images, compute_hashes, cluster, print_preview, move_files, build_restore_script
 
 
 class TestScanImages:
@@ -204,3 +204,42 @@ class TestMoveFiles:
         groups, ungrouped = self._setup(tmp_path)
         move_files(groups, ungrouped, tmp_path)
         assert (tmp_path / "group_001").is_dir()
+
+
+class TestBuildRestoreScript:
+    def _moved_list(self, tmp_path):
+        src1 = tmp_path / "a.png"
+        dst1 = tmp_path / "group_001" / "a.png"
+        src2 = tmp_path / "b.png"
+        dst2 = tmp_path / "_ungrouped" / "b.png"
+        return [(src1, dst1), (src2, dst2)]
+
+    def test_creates_bat_file(self, tmp_path):
+        moved = self._moved_list(tmp_path)
+        script = build_restore_script(moved, tmp_path)
+        assert script is not None
+        assert script.suffix == ".bat"
+        assert script.exists()
+
+    def test_bat_in_backup_dir(self, tmp_path):
+        moved = self._moved_list(tmp_path)
+        script = build_restore_script(moved, tmp_path)
+        assert script.parent.name == "_classify_backup"
+
+    def test_bat_contains_move_commands(self, tmp_path):
+        moved = self._moved_list(tmp_path)
+        script = build_restore_script(moved, tmp_path)
+        content = script.read_text(encoding="utf-8")
+        assert "move" in content
+        assert "a.png" in content
+        assert "b.png" in content
+
+    def test_bat_starts_with_echo_off(self, tmp_path):
+        moved = self._moved_list(tmp_path)
+        script = build_restore_script(moved, tmp_path)
+        content = script.read_text(encoding="utf-8")
+        assert content.startswith("@echo off")
+
+    def test_empty_moved_returns_none(self, tmp_path):
+        result = build_restore_script([], tmp_path)
+        assert result is None

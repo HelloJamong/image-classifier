@@ -141,6 +141,39 @@ def move_files(
     return moved
 
 
+def build_restore_script(
+    moved: list[tuple[Path, Path]],
+    target_dir: Path,
+) -> Path | None:
+    """이동된 파일을 원래 위치로 되돌리는 Windows .bat 스크립트를 생성한다.
+
+    Returns:
+        생성된 스크립트 경로, 이동 파일이 없으면 None
+    """
+    import datetime
+
+    if not moved:
+        return None
+
+    backup_dir = target_dir / "_classify_backup"
+    backup_dir.mkdir(exist_ok=True)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    script_path = backup_dir / f"restore_{timestamp}.bat"
+
+    lines = [
+        "@echo off",
+        f":: image-classifier 복원 스크립트 ({timestamp})",
+        ":: 이 파일을 실행하면 분류 전 상태로 되돌립니다.",
+        "",
+    ]
+    for src, dst in moved:
+        lines.append(f'move "{dst}" "{src}"')
+
+    script_path.write_text("\n".join(lines), encoding="utf-8")
+    return script_path
+
+
 def print_preview(groups: dict[int, list[Path]], ungrouped: list[Path]) -> None:
     """클러스터링 결과 미리보기를 콘솔에 출력한다."""
     print("분류 결과 미리보기")
