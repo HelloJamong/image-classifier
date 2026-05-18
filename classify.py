@@ -102,6 +102,18 @@ def cluster(
     return groups, ungrouped
 
 
+def print_preview(groups: dict[int, list[Path]], ungrouped: list[Path]) -> None:
+    """클러스터링 결과 미리보기를 콘솔에 출력한다."""
+    print("분류 결과 미리보기")
+    print("─" * 34)
+    print(f"그룹 수     : {len(groups)}")
+    for idx, (_, paths) in enumerate(sorted(groups.items()), 1):
+        label = f"group_{idx:03d}"
+        print(f"{label:<12}: {len(paths)}장")
+    print(f"미분류(_ungrouped): {len(ungrouped)}장")
+    print("─" * 34)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Group images by visual similarity."

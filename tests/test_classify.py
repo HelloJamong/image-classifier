@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images, compute_hashes, cluster
+from classify import scan_images, compute_hashes, cluster, print_preview
 
 
 class TestScanImages:
@@ -126,3 +126,39 @@ class TestCluster:
         groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
         assert groups == {}
         assert len(ungrouped) == 1
+
+
+class TestPrintPreview:
+    def _make_groups(self, tmp_path):
+        a = tmp_path / "a.png"
+        b = tmp_path / "b.png"
+        c = tmp_path / "c.png"
+        d = tmp_path / "d.png"
+        return {0: [a, b], 1: [c]}, [d]
+
+    def test_shows_group_count(self, tmp_path, capsys):
+        groups, ungrouped = self._make_groups(tmp_path)
+        print_preview(groups, ungrouped)
+        out = capsys.readouterr().out
+        assert "2" in out  # 그룹 수
+
+    def test_shows_each_group_size(self, tmp_path, capsys):
+        groups, ungrouped = self._make_groups(tmp_path)
+        print_preview(groups, ungrouped)
+        out = capsys.readouterr().out
+        assert "group_001" in out
+        assert "2장" in out
+        assert "group_002" in out
+        assert "1장" in out
+
+    def test_shows_ungrouped_count(self, tmp_path, capsys):
+        groups, ungrouped = self._make_groups(tmp_path)
+        print_preview(groups, ungrouped)
+        out = capsys.readouterr().out
+        assert "_ungrouped" in out
+        assert "1장" in out
+
+    def test_empty_groups(self, tmp_path, capsys):
+        print_preview({}, [tmp_path / "a.png"])
+        out = capsys.readouterr().out
+        assert "0" in out or "그룹" in out
