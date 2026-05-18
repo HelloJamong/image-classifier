@@ -297,3 +297,66 @@ class TestMain:
                     main()
         out = capsys.readouterr().out
         assert "bad.jpg" in out
+
+
+class TestIntegration:
+    """전체 파이프라인 통합 테스트 — 실제 이미지 픽스처 사용."""
+
+    def _populate(self, tmp_path):
+        """유사 이미지 쌍 2장 + 이질 이미지 1장 + 손상 파일 1개 생성."""
+        from PIL import Image
+        import numpy as np
+
+        def gradient(path, start, end):
+            arr = np.tile(np.linspace(start, end, 64, dtype=np.uint8), (64, 1))
+            Image.fromarray(np.stack([arr, arr, arr], axis=2)).save(path)
+
+        gradient(tmp_path / "sim_a.png", 0, 200)
+        gradient(tmp_path / "sim_b.png", 0, 200)   # sim_a와 동일
+        gradient(tmp_path / "diff.png", 200, 0)     # 다른 이미지
+        (tmp_path / "corrupt.jpg").write_bytes(b"garbage")
+
+    def test_similar_images_grouped_together(self, tmp_path):
+        self._populate(tmp_path)
+        hashes, _ = compute_hashes(scan_images(tmp_path))
+        groups, _ = cluster(hashes, eps=0.35, min_samples=2)
+        all_groups = list(groups.values())
+        sim_a = tmp_path / "sim_a.png"
+        sim_b = tmp_path / "sim_b.png"
+        assert any(sim_a in g and sim_b in g for g in all_groups)
+
+    def test_corrupt_file_skipped_pipeline_continues(self, tmp_path):
+        self._populate(tmp_path)
+        hashes, skipped = compute_hashes(scan_images(tmp_path))
+        assert any(p.name == "corrupt.jpg" for p, _ in skipped)
+        assert len(hashes) == 3  # 3 valid images
+
+    def test_full_run_y_creates_group_dirs(self, tmp_path):
+        self._populate(tmp_path)
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="Y"):
+                with pytest.raises(SystemExit):
+                    main()
+        group_dirs = [d for d in tmp_path.iterdir() if d.is_dir() and d.name.startswith("group_")]
+        assert len(group_dirs) >= 1
+
+    def test_full_run_y_creates_restore_script(self, tmp_path):
+        self._populate(tmp_path)
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="Y"):
+                with pytest.raises(SystemExit):
+                    main()
+        backup_dir = tmp_path / "_classify_backup"
+        assert backup_dir.exists()
+        bat_files = list(backup_dir.glob("restore_*.bat"))
+        assert len(bat_files) == 1
+
+    def test_full_run_n_leaves_dir_unchanged(self, tmp_path):
+        self._populate(tmp_path)
+        before = {p.name for p in tmp_path.iterdir() if p.is_file()}
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="N"):
+                with pytest.raises(SystemExit):
+                    main()
+        after = {p.name for p in tmp_path.iterdir() if p.is_file()}
+        assert before == after
