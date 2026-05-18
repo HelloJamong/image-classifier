@@ -1,9 +1,10 @@
 import sys
 from pathlib import Path
 import pytest
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images
+from classify import scan_images, compute_hashes
 
 
 class TestScanImages:
@@ -37,3 +38,48 @@ class TestScanImages:
     def test_nonexistent_dir_raises(self, tmp_path):
         with pytest.raises(SystemExit):
             scan_images(tmp_path / "does_not_exist")
+
+
+class TestComputeHashes:
+    def test_returns_vector_per_image(self, valid_images):
+        paths = list(valid_images.glob("*.png"))
+        hashes, skipped = compute_hashes(paths)
+        assert len(hashes) == 3
+        assert skipped == []
+
+    def test_vector_shape_is_64(self, valid_images):
+        paths = list(valid_images.glob("*.png"))
+        hashes, _ = compute_hashes(paths)
+        for _, vec in hashes:
+            assert vec.shape == (64,)
+            assert vec.dtype == float
+
+    def test_identical_images_same_hash(self, valid_images):
+        red = valid_images / "red.png"
+        red2 = valid_images / "red2.png"
+        hashes, _ = compute_hashes([red, red2])
+        vec1 = hashes[0][1]
+        vec2 = hashes[1][1]
+        assert np.array_equal(vec1, vec2)
+
+    def test_different_images_different_hash(self, valid_images):
+        red = valid_images / "red.png"
+        blue = valid_images / "blue.png"
+        hashes, _ = compute_hashes([red, blue])
+        assert not np.array_equal(hashes[0][1], hashes[1][1])
+
+    def test_corrupt_file_is_skipped(self, corrupt_image, valid_images):
+        red = valid_images / "red.png"
+        hashes, skipped = compute_hashes([corrupt_image, red])
+        assert len(hashes) == 1
+        assert len(skipped) == 1
+        assert skipped[0][0] == corrupt_image
+
+    def test_gif_first_frame(self, tmp_path):
+        from PIL import Image
+        frames = [Image.new("RGB", (64, 64), (i * 80, 0, 0)) for i in range(3)]
+        gif_path = tmp_path / "anim.gif"
+        frames[0].save(gif_path, save_all=True, append_images=frames[1:], loop=0)
+        hashes, skipped = compute_hashes([gif_path])
+        assert len(hashes) == 1
+        assert skipped == []

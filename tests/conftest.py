@@ -1,5 +1,12 @@
 from pathlib import Path
 import pytest
+from PIL import Image
+
+
+def make_solid_image(path: Path, color=(255, 0, 0), size=(64, 64), fmt="PNG"):
+    img = Image.new("RGB", size, color)
+    img.save(path, format=fmt)
+    return path
 
 
 @pytest.fixture
@@ -14,6 +21,32 @@ def image_dir(tmp_path):
     (tmp_path / "readme.txt").touch()
     (tmp_path / "data.json").touch()
     return tmp_path
+
+
+def make_gradient_image(path: Path, start: int, end: int):
+    """좌→우 밝기 그라디언트 이미지 생성 (phash에서 명확히 구분됨)."""
+    import numpy as np
+    arr = np.tile(np.linspace(start, end, 64, dtype=np.uint8), (64, 1))
+    img = Image.fromarray(np.stack([arr, arr, arr], axis=2), mode="RGB")
+    img.save(path)
+    return path
+
+
+@pytest.fixture
+def valid_images(tmp_path):
+    """실제 픽셀 데이터가 있는 이미지 파일 3장."""
+    make_gradient_image(tmp_path / "red.png", start=0, end=200)
+    make_gradient_image(tmp_path / "red2.png", start=0, end=200)   # red와 동일
+    make_gradient_image(tmp_path / "blue.png", start=200, end=0)   # 반대 방향
+    return tmp_path
+
+
+@pytest.fixture
+def corrupt_image(tmp_path):
+    """손상된 이미지 파일."""
+    bad = tmp_path / "bad.jpg"
+    bad.write_bytes(b"not an image")
+    return bad
 
 
 @pytest.fixture
