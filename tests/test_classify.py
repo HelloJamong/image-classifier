@@ -4,7 +4,8 @@ import pytest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images, compute_hashes, cluster, print_preview, move_files, build_restore_script
+from unittest.mock import patch
+from classify import scan_images, compute_hashes, cluster, print_preview, move_files, build_restore_script, main
 
 
 class TestScanImages:
@@ -243,3 +244,56 @@ class TestBuildRestoreScript:
     def test_empty_moved_returns_none(self, tmp_path):
         result = build_restore_script([], tmp_path)
         assert result is None
+
+
+class TestMain:
+    def _make_img(self, path):
+        from PIL import Image
+        Image.new("RGB", (64, 64), (100, 150, 200)).save(path)
+        return path
+
+    def _setup_dir(self, tmp_path):
+        self._make_img(tmp_path / "a.png")
+        self._make_img(tmp_path / "b.png")
+
+    def test_n_response_skips_move(self, tmp_path):
+        self._setup_dir(tmp_path)
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="N"):
+                with pytest.raises(SystemExit) as exc:
+                    main()
+        assert exc.value.code == 0
+        assert (tmp_path / "a.png").exists()
+        assert not (tmp_path / "group_001").exists()
+
+    def test_y_response_moves_files(self, tmp_path):
+        self._setup_dir(tmp_path)
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="Y"):
+                with pytest.raises(SystemExit) as exc:
+                    main()
+        assert exc.value.code == 0
+        assert not (tmp_path / "a.png").exists()
+
+    def test_nonexistent_dir_exits_with_error(self, tmp_path):
+        missing = tmp_path / "no_such_dir"
+        with patch("sys.argv", ["classify.py", "--dir", str(missing)]):
+            with pytest.raises(SystemExit) as exc:
+                main()
+        assert exc.value.code != 0
+
+    def test_empty_dir_exits_cleanly(self, tmp_path):
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with pytest.raises(SystemExit) as exc:
+                main()
+        assert exc.value.code == 0
+
+    def test_skip_log_printed_for_corrupt_files(self, tmp_path, capsys):
+        self._make_img(tmp_path / "good.png")
+        (tmp_path / "bad.jpg").write_bytes(b"not an image")
+        with patch("sys.argv", ["classify.py", "--dir", str(tmp_path)]):
+            with patch("builtins.input", return_value="Y"):
+                with pytest.raises(SystemExit):
+                    main()
+        out = capsys.readouterr().out
+        assert "bad.jpg" in out

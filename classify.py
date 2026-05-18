@@ -205,10 +205,34 @@ def main():
         print("이미지를 찾을 수 없습니다.")
         sys.exit(0)
 
-    print("image-classifier - 구현 예정")
-    print(f"  이미지 수  : {len(images)}")
-    print(f"  eps        : {args.eps}")
-    print(f"  min-samples: {args.min_samples}")
+    hashes, skipped = compute_hashes(images)
+
+    if not hashes:
+        print("처리 가능한 이미지가 없습니다.")
+        _print_skip_log(skipped)
+        sys.exit(0)
+
+    groups, ungrouped = cluster(hashes, eps=args.eps, min_samples=args.min_samples)
+    print_preview(groups, ungrouped)
+
+    answer = input("실행하시겠습니까? (Y/N): ").strip().upper()
+    if answer != "Y":
+        print("취소되었습니다.")
+        sys.exit(0)
+
+    moved = move_files(groups, ungrouped, target)
+    build_restore_script(moved, target)
+
+    print(f"\n완료: {len(moved)}개 파일 이동.")
+    _print_skip_log(skipped)
+    sys.exit(0)
+
+
+def _print_skip_log(skipped: list[tuple[Path, str]]) -> None:
+    if skipped:
+        print(f"\n[경고] 처리 실패한 파일 {len(skipped)}개:")
+        for path, reason in skipped:
+            print(f"  - {path.name}: {reason}")
 
 
 if __name__ == "__main__":
