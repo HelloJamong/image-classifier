@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from classify import scan_images, compute_hashes
+from classify import scan_images, compute_hashes, cluster
 
 
 class TestScanImages:
@@ -83,3 +83,46 @@ class TestComputeHashes:
         hashes, skipped = compute_hashes([gif_path])
         assert len(hashes) == 1
         assert skipped == []
+
+
+class TestCluster:
+    def _make_vectors(self, valid_images):
+        paths = [valid_images / "red.png", valid_images / "red2.png", valid_images / "blue.png"]
+        hashes, _ = compute_hashes(paths)
+        return hashes
+
+    def test_similar_images_same_group(self, valid_images):
+        hashes = self._make_vectors(valid_images)
+        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        # red와 red2는 같은 그룹에 배정돼야 함
+        group_paths = [set(paths) for paths in groups.values()]
+        red = valid_images / "red.png"
+        red2 = valid_images / "red2.png"
+        assert any(red in g and red2 in g for g in group_paths)
+
+    def test_noise_goes_to_ungrouped(self, valid_images):
+        hashes = self._make_vectors(valid_images)
+        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        # blue는 혼자이므로 ungrouped 또는 별도 그룹
+        blue = valid_images / "blue.png"
+        all_grouped = {p for paths in groups.values() for p in paths}
+        # blue가 그룹에 없으면 ungrouped에 있어야 함
+        if blue not in all_grouped:
+            assert blue in ungrouped
+
+    def test_returns_dict_and_list(self, valid_images):
+        hashes = self._make_vectors(valid_images)
+        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        assert isinstance(groups, dict)
+        assert isinstance(ungrouped, list)
+
+    def test_empty_input(self):
+        groups, ungrouped = cluster([], eps=0.35, min_samples=2)
+        assert groups == {}
+        assert ungrouped == []
+
+    def test_single_image_goes_to_ungrouped(self, valid_images):
+        hashes, _ = compute_hashes([valid_images / "red.png"])
+        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        assert groups == {}
+        assert len(ungrouped) == 1

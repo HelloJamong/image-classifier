@@ -19,6 +19,7 @@ from pathlib import Path
 import imagehash
 import numpy as np
 from PIL import Image
+from sklearn.cluster import DBSCAN
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 RESERVED_PREFIXES = ("group_", "_ungrouped", "_classify_backup")
@@ -68,6 +69,37 @@ def compute_hashes(
     if total:
         print()
     return hashes, skipped
+
+
+def cluster(
+    hashes: list[tuple[Path, np.ndarray]],
+    eps: float,
+    min_samples: int,
+) -> tuple[dict[int, list[Path]], list[Path]]:
+    """해시 벡터를 DBSCAN으로 클러스터링한다.
+
+    Returns:
+        groups:    {cluster_id: [path, ...]}  (0-based 정수 키)
+        ungrouped: [path, ...]                (노이즈 포인트)
+    """
+    if not hashes:
+        return {}, []
+
+    paths = [p for p, _ in hashes]
+    vectors = np.array([v for _, v in hashes])
+
+    labels = DBSCAN(eps=eps, min_samples=min_samples, metric="cosine").fit_predict(vectors)
+
+    groups: dict[int, list[Path]] = {}
+    ungrouped: list[Path] = []
+
+    for path, label in zip(paths, labels):
+        if label == -1:
+            ungrouped.append(path)
+        else:
+            groups.setdefault(label, []).append(path)
+
+    return groups, ungrouped
 
 
 def parse_args():
