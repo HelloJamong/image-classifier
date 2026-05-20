@@ -25,8 +25,15 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
 
+      - name: Verify icon asset
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "logo.png")) {
+            throw "logo.png not found. The release exe icon requires logo.png at the repository root."
+          }
+
       - name: Build exe
-        run: python -m PyInstaller --onefile --console --name classify_images classify.py
+        run: python -m PyInstaller --onefile --console --name classify_images --icon logo.png classify.py
 
       - name: Extract version from tag
         id: version

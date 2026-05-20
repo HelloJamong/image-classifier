@@ -13,8 +13,10 @@
 
 ## 사용법
 
-1. `classify_images.exe`와 `main.bat`을 분류할 폴더에 복사
-2. `main.bat` 실행
+1. `classify_images.exe`를 분류할 폴더에 복사
+2. `classify_images.exe` 실행
+
+배포 파일은 `classify_images.exe` 단일 파일입니다. 별도의 `main.bat`은 필요하지 않습니다.
 
 ```
 group_001/   ← 비슷한 이미지 그룹
@@ -32,7 +34,7 @@ classify_images.exe --dir <폴더> [--eps 0.35] [--min-samples 2]
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `--dir` | 실행 위치 | 대상 폴더 경로 |
+| `--dir` | exe가 있는 폴더 | 대상 폴더 경로 |
 | `--eps` | 0.35 | 그룹화 민감도 (낮을수록 엄격) |
 | `--min-samples` | 2 | 그룹 최소 이미지 수 |
 
@@ -42,6 +44,8 @@ classify_images.exe --dir <폴더> [--eps 0.35] [--min-samples 2]
 pip install -r requirements.txt
 build.bat
 ```
+
+`build.bat`과 GitHub Actions 릴리스 빌드는 프로젝트 루트의 `logo.png`를 exe 아이콘으로 자동 반영합니다.
 
 ## 지원 형식
 

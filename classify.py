@@ -5,7 +5,7 @@ Usage:
     classify.py [--dir DIR] [--eps EPS] [--min-samples N]
 
 Options:
-    --dir          Target folder (default: script location)
+    --dir          Target folder (default: executable folder when frozen, otherwise cwd)
     --eps          DBSCAN epsilon, controls grouping sensitivity (default: 0.35)
     --min-samples  Minimum images per group (default: 2)
 """
@@ -196,9 +196,22 @@ def parse_args():
     return parser.parse_args()
 
 
+def resolve_target_dir(arg_dir: str | None) -> Path:
+    """CLI 대상 폴더를 결정한다.
+
+    PyInstaller onefile exe에서는 ``__file__``이 임시 압축 해제 폴더를 가리킬 수 있으므로,
+    --dir 미지정 시 exe가 있는 폴더를 기본 대상으로 사용한다.
+    """
+    if arg_dir:
+        return Path(arg_dir)
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path.cwd()
+
+
 def main():
     args = parse_args()
-    target = Path(args.dir) if args.dir else Path(__file__).parent
+    target = resolve_target_dir(args.dir)
 
     images = scan_images(target)
     if not images:

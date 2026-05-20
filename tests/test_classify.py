@@ -5,7 +5,16 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from unittest.mock import patch
-from classify import scan_images, compute_hashes, cluster, print_preview, move_files, build_restore_script, main
+from classify import (
+    scan_images,
+    compute_hashes,
+    cluster,
+    print_preview,
+    move_files,
+    build_restore_script,
+    resolve_target_dir,
+    main,
+)
 
 
 class TestScanImages:
@@ -255,6 +264,27 @@ class TestMain:
     def _setup_dir(self, tmp_path):
         self._make_img(tmp_path / "a.png")
         self._make_img(tmp_path / "b.png")
+
+    def test_no_dir_defaults_to_current_working_directory(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        assert resolve_target_dir(None) == tmp_path
+
+    def test_frozen_no_dir_defaults_to_executable_directory(self, tmp_path, monkeypatch):
+        exe_dir = tmp_path / "images"
+        exe_dir.mkdir()
+        fake_exe = exe_dir / "classify_images.exe"
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(sys, "executable", str(fake_exe))
+
+        assert resolve_target_dir(None) == exe_dir
+
+    def test_explicit_dir_takes_precedence(self, tmp_path, monkeypatch):
+        cwd = tmp_path / "cwd"
+        target = tmp_path / "target"
+        cwd.mkdir()
+        target.mkdir()
+        monkeypatch.chdir(cwd)
+        assert resolve_target_dir(str(target)) == target
 
     def test_n_response_skips_move(self, tmp_path):
         self._setup_dir(tmp_path)

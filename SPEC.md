@@ -42,7 +42,7 @@ python classify.py [--dir DIR] [--eps 0.35] [--min-samples 2]
 build.bat  →  dist\classify_images.exe
 
 # 사용 (배포)
-main.bat   (또는 classify_images.exe --dir <폴더>)
+classify_images.exe   (또는 classify_images.exe --dir <폴더>)
 
 # 테스트
 pytest tests/ -v
@@ -60,7 +60,8 @@ image-classifier/
 ├── classify.py          ← 진입점 + 전체 로직 (단일 파일)
 ├── requirements.txt     ← 런타임 + 빌드 의존성
 ├── build.bat            ← PyInstaller 빌드 스크립트
-├── main.bat             ← 배포용 진입점
+├── main.bat             ← 로컬 실행 보조 스크립트 (릴리스 배포물 아님)
+├── logo.png             ← exe 아이콘 원본 이미지
 ├── SPEC.md              ← 이 문서
 ├── tests/
 │   ├── conftest.py      ← 테스트용 이미지 픽스처
@@ -163,9 +164,15 @@ def compute_hashes(image_paths: list[Path]) -> tuple[list[np.ndarray], list[Path
 - 복수 폴더 동시 처리
 
 **Never:**
-- `--dir`이 없거나 존재하지 않을 때 현재 디렉토리 외 폴더를 수정
+- `--dir`이 없을 때 기본 대상 폴더 외 폴더를 수정
+- `--dir`이 존재하지 않을 때 파일 이동을 시도
 - 원본 파일 삭제 (이동만, 삭제 없음)
 - `_classify_backup/` 폴더 내 파일 분류 대상에 포함
+
+**Runtime path rule:**
+- 배포 exe에서 `--dir` 미지정 시 exe가 있는 폴더를 대상으로 한다.
+- 개발 실행에서 `--dir` 미지정 시 현재 작업 폴더를 대상으로 한다.
+- PyInstaller onefile exe의 `__file__`은 임시 압축 해제 폴더를 가리킬 수 있으므로 배포 exe의 기본 대상 결정에 사용하지 않는다.
 
 ---
 
