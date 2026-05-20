@@ -6,6 +6,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from unittest.mock import patch
 from classify import (
+    DEFAULT_EPS,
     scan_images,
     compute_hashes,
     cluster,
@@ -96,6 +97,11 @@ class TestComputeHashes:
 
 
 class TestCluster:
+    def _hash_item(self, tmp_path, name, on_bits):
+        vec = np.zeros(64, dtype=float)
+        vec[list(on_bits)] = 1.0
+        return tmp_path / name, vec
+
     def _make_vectors(self, valid_images):
         paths = [valid_images / "red.png", valid_images / "red2.png", valid_images / "blue.png"]
         hashes, _ = compute_hashes(paths)
@@ -103,7 +109,7 @@ class TestCluster:
 
     def test_similar_images_same_group(self, valid_images):
         hashes = self._make_vectors(valid_images)
-        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
         # red와 red2는 같은 그룹에 배정돼야 함
         group_paths = [set(paths) for paths in groups.values()]
         red = valid_images / "red.png"
@@ -112,7 +118,7 @@ class TestCluster:
 
     def test_noise_goes_to_ungrouped(self, valid_images):
         hashes = self._make_vectors(valid_images)
-        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
         # blue는 혼자이므로 ungrouped 또는 별도 그룹
         blue = valid_images / "blue.png"
         all_grouped = {p for paths in groups.values() for p in paths}
@@ -122,19 +128,46 @@ class TestCluster:
 
     def test_returns_dict_and_list(self, valid_images):
         hashes = self._make_vectors(valid_images)
-        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
         assert isinstance(groups, dict)
         assert isinstance(ungrouped, list)
 
     def test_empty_input(self):
-        groups, ungrouped = cluster([], eps=0.35, min_samples=2)
+        groups, ungrouped = cluster([], eps=DEFAULT_EPS, min_samples=2)
         assert groups == {}
         assert ungrouped == []
 
     def test_single_image_goes_to_ungrouped(self, valid_images):
         hashes, _ = compute_hashes([valid_images / "red.png"])
-        groups, ungrouped = cluster(hashes, eps=0.35, min_samples=2)
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
         assert groups == {}
+        assert len(ungrouped) == 1
+
+    def test_clearly_different_hashes_do_not_group_by_default(self, tmp_path):
+        hashes = [
+            self._hash_item(tmp_path, "a.png", range(0, 32)),
+            # Same number of enabled bits, but 32 of 64 bits differ from a.png.
+            self._hash_item(tmp_path, "b.png", range(32, 64)),
+        ]
+
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
+
+        assert groups == {}
+        assert {p.name for p in ungrouped} == {"a.png", "b.png"}
+
+    def test_complete_linkage_prevents_bridge_grouping(self, tmp_path):
+        hashes = [
+            self._hash_item(tmp_path, "a.png", []),
+            self._hash_item(tmp_path, "b.png", range(0, 20)),
+            self._hash_item(tmp_path, "c.png", range(0, 40)),
+        ]
+
+        groups, ungrouped = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
+
+        assert len(groups) == 1
+        grouped_names = [{p.name for p in paths} for paths in groups.values()]
+        assert all(len(names) == 2 for names in grouped_names)
+        assert all({"a.png", "c.png"} != names for names in grouped_names)
         assert len(ungrouped) == 1
 
 
@@ -349,7 +382,7 @@ class TestIntegration:
     def test_similar_images_grouped_together(self, tmp_path):
         self._populate(tmp_path)
         hashes, _ = compute_hashes(scan_images(tmp_path))
-        groups, _ = cluster(hashes, eps=0.35, min_samples=2)
+        groups, _ = cluster(hashes, eps=DEFAULT_EPS, min_samples=2)
         all_groups = list(groups.values())
         sim_a = tmp_path / "sim_a.png"
         sim_b = tmp_path / "sim_b.png"

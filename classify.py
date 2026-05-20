@@ -6,7 +6,7 @@ Usage:
 
 Options:
     --dir          Target folder (default: executable folder when frozen, otherwise cwd)
-    --eps          DBSCAN epsilon, controls grouping sensitivity (default: 0.35)
+    --eps          Normalized phash Hamming distance threshold (default: 0.32)
     --min-samples  Minimum images per group (default: 2)
 """
 
@@ -19,10 +19,11 @@ from pathlib import Path
 import imagehash
 import numpy as np
 from PIL import Image
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import AgglomerativeClustering
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 RESERVED_PREFIXES = ("group_", "_ungrouped", "_classify_backup")
+DEFAULT_EPS = 0.32
 
 
 def scan_images(directory: Path) -> list[Path]:
@@ -76,28 +77,50 @@ def cluster(
     eps: float,
     min_samples: int,
 ) -> tuple[dict[int, list[Path]], list[Path]]:
-    """해시 벡터를 DBSCAN으로 클러스터링한다.
+    """phash 벡터를 normalized Hamming distance 기준으로 클러스터링한다.
+
+    Complete-linkage를 사용해 클러스터 내부의 모든 이미지가 threshold 이내에
+    머물도록 한다. DBSCAN의 밀도 연결 방식은 중간 이미지가 다리처럼 이어질 때
+    서로 다른 이미지 묶음까지 하나의 거대 그룹으로 합쳐질 수 있다.
 
     Returns:
         groups:    {cluster_id: [path, ...]}  (0-based 정수 키)
-        ungrouped: [path, ...]                (노이즈 포인트)
+        ungrouped: [path, ...]                (min_samples 미만 그룹)
     """
     if not hashes:
         return {}, []
 
     paths = [p for p, _ in hashes]
     vectors = np.array([v for _, v in hashes])
+    min_samples = max(min_samples, 1)
+    if len(paths) == 1:
+        if min_samples == 1:
+            return {0: paths}, []
+        return {}, paths
+    if len(paths) < min_samples:
+        return {}, paths
 
-    labels = DBSCAN(eps=eps, min_samples=min_samples, metric="cosine").fit_predict(vectors)
+    labels = AgglomerativeClustering(
+        n_clusters=None,
+        distance_threshold=eps,
+        metric="hamming",
+        linkage="complete",
+    ).fit_predict(vectors)
 
-    groups: dict[int, list[Path]] = {}
+    raw_groups: dict[int, list[Path]] = {}
     ungrouped: list[Path] = []
 
     for path, label in zip(paths, labels):
-        if label == -1:
-            ungrouped.append(path)
+        raw_groups.setdefault(label, []).append(path)
+
+    groups: dict[int, list[Path]] = {}
+    next_group_id = 0
+    for _, group_paths in sorted(raw_groups.items()):
+        if len(group_paths) < min_samples:
+            ungrouped.extend(group_paths)
         else:
-            groups.setdefault(label, []).append(path)
+            groups[next_group_id] = group_paths
+            next_group_id += 1
 
     return groups, ungrouped
 
@@ -191,7 +214,12 @@ def parse_args():
         description="Group images by visual similarity."
     )
     parser.add_argument("--dir", default=None, help="Target folder path")
-    parser.add_argument("--eps", type=float, default=0.35, help="DBSCAN epsilon (0.0~1.0)")
+    parser.add_argument(
+        "--eps",
+        type=float,
+        default=DEFAULT_EPS,
+        help="Normalized phash Hamming distance threshold (0.0~1.0)",
+    )
     parser.add_argument("--min-samples", type=int, default=2, help="Min images per group")
     return parser.parse_args()
 

@@ -22,7 +22,7 @@
 |---|---|
 | Language | Python 3.8+ |
 | 해시 알고리즘 | `imagehash.phash` (8×8 = 64비트 perceptual hash) |
-| 클러스터링 | `sklearn.cluster.DBSCAN` (metric=`cosine`) |
+| 클러스터링 | `sklearn.cluster.AgglomerativeClustering` (metric=`hamming`, linkage=`complete`) |
 | 이미지 로딩 | `Pillow` (GIF는 첫 프레임 `Image.seek(0)`) |
 | 배포 | `PyInstaller --onefile` |
 | 테스트 | `pytest` |
@@ -36,7 +36,7 @@
 pip install -r requirements.txt
 
 # 실행 (개발)
-python classify.py [--dir DIR] [--eps 0.35] [--min-samples 2]
+python classify.py [--dir DIR] [--eps 0.32] [--min-samples 2]
 
 # 빌드
 build.bat  →  dist\classify_images.exe
@@ -88,7 +88,7 @@ image-classifier/
 
 3. 해시 벡터 배열 구성
    → 각 해시를 64차원 이진 벡터로 변환
-   → DBSCAN(eps=args.eps, min_samples=args.min_samples, metric='cosine') 실행
+   → AgglomerativeClustering(distance_threshold=args.eps, metric='hamming', linkage='complete') 실행
 
 4. 미리보기 출력
    → "그룹 수: N개 / 각 그룹 이미지 수 / ungrouped: M개"

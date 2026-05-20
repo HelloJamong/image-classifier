@@ -9,10 +9,16 @@
 
 ### Fixed
 - PyInstaller exe 아이콘이 기본 로고로 보일 수 있던 문제를 줄이기 위해 `logo.png` 자동 변환 대신 Windows용 `logo.ico`를 직접 임베드하도록 변경했습니다.
+- 다양한 이미지가 하나의 거대 그룹으로 합쳐질 수 있던 문제를 줄이기 위해 클러스터링 기준을 `cosine DBSCAN`에서 normalized Hamming distance 기반 complete-linkage로 변경했습니다.
 
 ### Added
 - `logo.png`에서 생성한 다중 해상도 Windows 아이콘 파일 `logo.ico`를 추가했습니다.
 - GitHub Actions 릴리스 빌드에서 `logo.ico` 존재 여부를 사전 검증하도록 변경했습니다.
+- 서로 다른 phash가 기본 threshold에서 묶이지 않는지와 브리지 효과가 전체 그룹 병합으로 이어지지 않는지 검증하는 회귀 테스트를 추가했습니다.
+
+### Changed
+- `--eps` 기본값을 `0.35`에서 `0.32`로 낮춰 phash 64비트 기준 약 20비트 이내 차이만 기본 그룹 후보로 보도록 조정했습니다.
+- 로컬 검증용 `sample/` 폴더가 git에 포함되지 않도록 `.gitignore`에 추가했습니다.
 
 ---
 

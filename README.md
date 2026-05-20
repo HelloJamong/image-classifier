@@ -29,13 +29,13 @@ _classify_backup/restore_YYYYMMDD_HHMMSS.bat  ← 복원 스크립트
 ## 옵션
 
 ```
-classify_images.exe --dir <폴더> [--eps 0.35] [--min-samples 2]
+classify_images.exe --dir <폴더> [--eps 0.32] [--min-samples 2]
 ```
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
 | `--dir` | exe가 있는 폴더 | 대상 폴더 경로 |
-| `--eps` | 0.35 | 그룹화 민감도 (낮을수록 엄격) |
+| `--eps` | 0.32 | 그룹화 민감도 (낮을수록 엄격) |
 | `--min-samples` | 2 | 그룹 최소 이미지 수 |
 
 ## 빌드 (개발자)
