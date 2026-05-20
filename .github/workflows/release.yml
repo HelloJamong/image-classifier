@@ -28,12 +28,12 @@ jobs:
       - name: Verify icon asset
         shell: pwsh
         run: |
-          if (-not (Test-Path "logo.png")) {
-            throw "logo.png not found. The release exe icon requires logo.png at the repository root."
+          if (-not (Test-Path "logo.ico")) {
+            throw "logo.ico not found. The release exe icon requires logo.ico at the repository root."
           }
 
       - name: Build exe
-        run: python -m PyInstaller --onefile --console --name classify_images --icon logo.png classify.py
+        run: python -m PyInstaller --onefile --console --name classify_images --icon logo.ico classify.py
 
       - name: Extract version from tag
         id: version

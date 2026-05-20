@@ -45,7 +45,7 @@ pip install -r requirements.txt
 build.bat
 ```
 
-`build.bat`과 GitHub Actions 릴리스 빌드는 프로젝트 루트의 `logo.png`를 exe 아이콘으로 자동 반영합니다.
+`build.bat`과 GitHub Actions 릴리스 빌드는 프로젝트 루트의 `logo.ico`를 exe 아이콘으로 자동 반영합니다. `logo.ico`는 `logo.png`에서 생성한 Windows용 아이콘 파일입니다.
 
 ## 지원 형식
 

@@ -62,6 +62,7 @@ image-classifier/
 ├── build.bat            ← PyInstaller 빌드 스크립트
 ├── main.bat             ← 로컬 실행 보조 스크립트 (릴리스 배포물 아님)
 ├── logo.png             ← exe 아이콘 원본 이미지
+├── logo.ico             ← PyInstaller가 직접 임베드하는 Windows 아이콘
 ├── SPEC.md              ← 이 문서
 ├── tests/
 │   ├── conftest.py      ← 테스트용 이미지 픽스처

@@ -5,6 +5,17 @@
 
 ---
 
+## [26.1.2] - 2026-05-20
+
+### Fixed
+- PyInstaller exe 아이콘이 기본 로고로 보일 수 있던 문제를 줄이기 위해 `logo.png` 자동 변환 대신 Windows용 `logo.ico`를 직접 임베드하도록 변경했습니다.
+
+### Added
+- `logo.png`에서 생성한 다중 해상도 Windows 아이콘 파일 `logo.ico`를 추가했습니다.
+- GitHub Actions 릴리스 빌드에서 `logo.ico` 존재 여부를 사전 검증하도록 변경했습니다.
+
+---
+
 ## [26.1.1] - 2026-05-20
 
 ### Fixed
