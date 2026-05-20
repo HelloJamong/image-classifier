@@ -25,12 +25,8 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
 
-      - name: Verify icon asset
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "logo.ico")) {
-            throw "logo.ico not found. The release exe icon requires logo.ico at the repository root."
-          }
+      - name: Generate icon asset
+        run: python make_ico.py
 
       - name: Build exe
         run: python -m PyInstaller --onefile --console --name classify_images --icon logo.ico classify.py

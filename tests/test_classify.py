@@ -58,11 +58,11 @@ class TestComputeHashes:
         assert len(hashes) == 3
         assert skipped == []
 
-    def test_vector_shape_is_64(self, valid_images):
+    def test_vector_shape_is_128(self, valid_images):
         paths = list(valid_images.glob("*.png"))
         hashes, _ = compute_hashes(paths)
         for _, vec in hashes:
-            assert vec.shape == (64,)
+            assert vec.shape == (128,)
             assert vec.dtype == float
 
     def test_identical_images_same_hash(self, valid_images):
@@ -98,8 +98,11 @@ class TestComputeHashes:
 
 class TestCluster:
     def _hash_item(self, tmp_path, name, on_bits):
-        vec = np.zeros(64, dtype=float)
-        vec[list(on_bits)] = 1.0
+        # 128-dim: 앞 64(phash) + 뒤 64(whash), 동일 패턴 미러링
+        vec = np.zeros(128, dtype=float)
+        for b in on_bits:
+            vec[b] = 1.0
+            vec[b + 64] = 1.0
         return tmp_path / name, vec
 
     def _make_vectors(self, valid_images):

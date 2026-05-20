@@ -45,7 +45,9 @@ def scan_images(directory: Path) -> list[Path]:
 def compute_hashes(
     paths: list[Path],
 ) -> tuple[list[tuple[Path, np.ndarray]], list[tuple[Path, str]]]:
-    """각 이미지를 phash로 해싱해 64차원 float 벡터로 반환한다.
+    """각 이미지를 phash + whash로 해싱해 128차원 float 벡터로 반환한다.
+
+    앞 64차원: phash (밝기/구도), 뒤 64차원: whash (웨이블릿, 고주파 패턴)
 
     Returns:
         hashes:  [(path, vector), ...]  성공 목록
@@ -61,9 +63,9 @@ def compute_hashes(
             img = Image.open(path)
             img.seek(0)  # GIF 첫 프레임; 일반 이미지는 seek(0)이 무해함
             img = img.convert("RGB")
-            h = imagehash.phash(img)
-            vec = np.array(h.hash).flatten().astype(float)
-            hashes.append((path, vec))
+            ph = np.array(imagehash.phash(img).hash).flatten().astype(float)
+            wh = np.array(imagehash.whash(img).hash).flatten().astype(float)
+            hashes.append((path, np.concatenate([ph, wh])))
         except Exception as e:
             skipped.append((path, str(e)))
 
@@ -77,11 +79,11 @@ def cluster(
     eps: float,
     min_samples: int,
 ) -> tuple[dict[int, list[Path]], list[Path]]:
-    """phash 벡터를 normalized Hamming distance 기준으로 클러스터링한다.
+    """phash+whash 앙상블 거리 기준으로 클러스터링한다.
 
-    Complete-linkage를 사용해 클러스터 내부의 모든 이미지가 threshold 이내에
-    머물도록 한다. DBSCAN의 밀도 연결 방식은 중간 이미지가 다리처럼 이어질 때
-    서로 다른 이미지 묶음까지 하나의 거대 그룹으로 합쳐질 수 있다.
+    128-dim 벡터(앞 64: phash, 뒤 64: whash)를 받아 두 해시의
+    normalized Hamming distance 평균을 precomputed 거리 행렬로 계산한다.
+    Complete-linkage로 클러스터 내 모든 쌍이 eps 이내에 머물게 한다.
 
     Returns:
         groups:    {cluster_id: [path, ...]}  (0-based 정수 키)
@@ -100,12 +102,18 @@ def cluster(
     if len(paths) < min_samples:
         return {}, paths
 
+    ph = vectors[:, :64]
+    wh = vectors[:, 64:]
+    ph_dist = np.mean(np.abs(ph[:, np.newaxis] - ph[np.newaxis, :]), axis=2)
+    wh_dist = np.mean(np.abs(wh[:, np.newaxis] - wh[np.newaxis, :]), axis=2)
+    dist = (ph_dist + wh_dist) / 2
+
     labels = AgglomerativeClustering(
         n_clusters=None,
         distance_threshold=eps,
-        metric="hamming",
+        metric="precomputed",
         linkage="complete",
-    ).fit_predict(vectors)
+    ).fit_predict(dist)
 
     raw_groups: dict[int, list[Path]] = {}
     ungrouped: list[Path] = []

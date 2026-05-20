@@ -5,6 +5,21 @@
 
 ---
 
+## [26.1.3] - 2026-05-21
+
+### Fixed
+- PyInstaller exe 아이콘이 기본 아이콘으로 표시되던 문제를 수정했습니다. 단일 해상도 ICO 대신 16/32/48/64/128/256px 6개 해상도를 포함한 ICO를 빌드 시 자동 생성하도록 변경했습니다.
+
+### Added
+- `make_ico.py` 스크립트를 추가했습니다. `logo.png`에서 Windows 표준 다중 해상도 ICO를 생성하며, 빌드(`build.bat`)와 GitHub Actions 릴리스 워크플로우에서 PyInstaller 실행 전에 자동으로 호출됩니다.
+
+### Changed
+- 이미지 분류 정확도를 개선했습니다. 해시 알고리즘을 `phash` 단독에서 `phash + whash` 앙상블로 변경했습니다. 두 해시의 normalized Hamming distance 평균을 거리 기준으로 사용하여 구도만 비슷한 이미지의 오그룹 및 색상·텍스처가 유사한 이미지의 미분류를 모두 줄였습니다.
+- `build.bat`의 아이콘 사전 검증 방식을 `logo.ico` 존재 확인에서 `logo.png` 존재 확인 후 ICO 자동 생성으로 변경했습니다.
+- GitHub Actions 릴리스 워크플로우의 "Verify icon asset" 스텝을 "Generate icon asset"으로 교체했습니다.
+
+---
+
 ## [26.1.2] - 2026-05-20
 
 ### Fixed

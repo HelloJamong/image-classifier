@@ -21,8 +21,8 @@
 | 항목 | 선택 |
 |---|---|
 | Language | Python 3.8+ |
-| 해시 알고리즘 | `imagehash.phash` (8×8 = 64비트 perceptual hash) |
-| 클러스터링 | `sklearn.cluster.AgglomerativeClustering` (metric=`hamming`, linkage=`complete`) |
+| 해시 알고리즘 | `imagehash.phash` + `imagehash.whash` 앙상블 (각 64비트 → 128차원 벡터) |
+| 클러스터링 | `sklearn.cluster.AgglomerativeClustering` (metric=`precomputed`, linkage=`complete`) |
 | 이미지 로딩 | `Pillow` (GIF는 첫 프레임 `Image.seek(0)`) |
 | 배포 | `PyInstaller --onefile` |
 | 테스트 | `pytest` |
@@ -82,13 +82,14 @@ image-classifier/
    → 지원 확장자: .jpg .jpeg .png .webp .bmp .gif
    → GIF: Image.seek(0)으로 첫 프레임 추출
 
-2. 각 이미지 phash 계산 (64비트)
+2. 각 이미지 phash + whash 계산 (각 64비트 → 128차원 벡터)
+   → 앞 64차원: phash (밝기/구도), 뒤 64차원: whash (웨이블릿, 고주파 패턴)
    → 진행 출력: "해싱 중... (N/전체)"
    → 실패 시: skip_log에 기록, 해당 파일 스킵
 
-3. 해시 벡터 배열 구성
-   → 각 해시를 64차원 이진 벡터로 변환
-   → AgglomerativeClustering(distance_threshold=args.eps, metric='hamming', linkage='complete') 실행
+3. 앙상블 거리 행렬 계산 후 클러스터링
+   → 거리 = (phash_hamming + whash_hamming) / 2 (pairwise, 정규화)
+   → AgglomerativeClustering(distance_threshold=args.eps, metric='precomputed', linkage='complete') 실행
 
 4. 미리보기 출력
    → "그룹 수: N개 / 각 그룹 이미지 수 / ungrouped: M개"

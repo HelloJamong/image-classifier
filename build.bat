@@ -11,8 +11,14 @@ setlocal
 
 echo [build] classify_images.exe 빌드 시작...
 
-if not exist "logo.ico" (
-    echo [ERROR] logo.ico 를 찾을 수 없습니다. exe 아이콘으로 사용할 파일을 프로젝트 루트에 두세요.
+if not exist "logo.png" (
+    echo [ERROR] logo.png 를 찾을 수 없습니다. 프로젝트 루트에 logo.png 파일을 두세요.
+    exit /b 1
+)
+
+python make_ico.py
+if %errorlevel% neq 0 (
+    echo [ERROR] ICO 생성 실패.
     exit /b 1
 )
 
